@@ -4,6 +4,9 @@ import sys, getopt
 import os.path
 from PIL import Image
 
+FILE_TYPES = ["ppm", "png", "jpeg", "jpg", "gif", "tiff", "bmp"]
+
+
 # data holder for image
 class Data:
     def __init__(self, _file, _copyName = ""):
@@ -28,24 +31,81 @@ class Data:
         self.origHeight = self.im.height
         # flag to overwrite image or save to new image
         self.copyName = _copyName
+        self.copyName = os.path.basename(self.copyName)
+        self.copyName = os.path.splitext(self.copyName)[0]
         self.saveCopy = len(self.copyName) > 0
-        
+
     # resizes with fixed dimensions
+    # requires x,y be integers
     def resizeFixed(self, x, y):
         self.saveImage(x,y)
 
     # resizes based on fixed width wit height maintaing aspect ratio
+    # requires w be an integer
     def resizeWidth(self, w):
         percent = float(w) / float(self.origWidth)
-        newHeight = self.height * percent
-        self.saveImage(w,newHeight)
+        newHeight = self.origHeight * percent
+        self.saveImage(w,int(newHeight))
 
     # resizes based on fixed height with the width maintaing aspect ratio
+    # requires h be an integer
     def resizeHeight(self, h):
         percent = float(h) / float(self.origHeight)
-        newWidth = self.width * percent
-        self.saveImage(newWidth, h)
+        newWidth = self.origWidth * percent
+        self.saveImage(int(newWidth), h)
+
+    # resizes both dimensions by percent.
+    # require percent be a real number > 1
+    def resizeByPercent(self, percent):
+        percent /= 100.0
+        self.saveImage(int(self.origWidth*percent), int(self.origHeight*percent))
+
+    # takes file format and creates new image of format type
+    def convertType(self, _type):
+        _type = _type.strip('.')
+        copy = self.im.copy()
+        try:
+            copy.save(self.path + '/' + self.name + "." + _type)
+            print "Converted {} from {} to {}".format(self.name, self.extension, _type)
+        except IOError as e:
+            sys.stderr.write(str(e))
+            sys.stderr.write("\n\nSomething went wrong when writing new image.",
+                    "Either no new image was created or the new image may",
+                    "be corrupted")
+            sys.exit(1)
+
+
+    # compresses image as much as can be with quality of 90
+    #TODO pass quality and compression type
+    def compressImage(self):
+        # original file size
+        origSize = os.path.getsize(self.path + '/' + self.name + "." + self.extension)
+        # if making new file
+        if self.saveCopy:
+            copy = self.im.copy()
+            try:
+                copy = copy.resize((self.origWidth, self.origHeight))
+                copy.save(self.path + '/' + self.copyName + "." + self.extension, \
+                          quality=90, optimize=True)
+                newSize = os.path.getsize(self.path + '/' + self.copyName + "." + self.extension)
+            except IOError as e:
+                saveError(e)
+        # if overwriting
+        else:
+            try:
+                self.im.save(self.path + '/' + self.name + "." + self.extension, \
+                             quality=90, optimize=True)
+                newSize = os.path.getsize(self.path + '/' + self.name + "." + self.extension)
+            except IOError as e:
+                saveError(e)
+        percent = 1-newSize/float(origSize)
+        print "Compressed file by {:.2%} from {:,} kb to {:,} kb".\
+               format(percent, origSize/1024, newSize/1024)
+
+
+
     # function takes absolute sizes of the image to be saved
+    # requires x,y be integers
     def saveImage(self, x, y):
         if self.saveCopy:
             copy = self.im.copy()
@@ -54,12 +114,20 @@ class Data:
                 print self.path + '/' + self.copyName, self.extension
                 copy.save(self.path + '/' + self.copyName, self.extension)
             except IOError as e:
-                sys.stderr.write(str(e))
-                sys.stderr.write("\n\nSomething went wrong when writing new image.",
-                        "Either no new image was created or the new image may",
-                        "be corrupted")
+                saveError(e)
         else:
             self.im = self.im.resize((x,y))
+            try:
+                self.im.save(self.path + '/' + self.name + "." + self.extension)
+            except IOError as e:
+                saveError(e)
+
+def saveError(e):
+    sys.stderr.write(str(e))
+    sys.stderr.write("\n\nSomething went wrong when writing new image.",
+            "Either no new image was created or the new image may",
+            "be corrupted")
+    sys.exit(1)
 
 
 # def getInput(argv):
@@ -79,14 +147,12 @@ class Data:
 #         elif opt in ("-o", "--ofile"):
 #             outputfile = arg
 #         else:
-#             print "anal"
+#             print "else"
 #     print 'Input file is "', inputfile
 #     print 'Output file is "', outputfile
 
 if __name__ == "__main__":
     # getInput(sys.argv[1:])
-    d = Data("./images/square.png", "squareCopy.png")
-    print d.path
-    print d.name
-    print d.saveCopy
-    d.resizeFixed(300,300)
+    d = Data("./images/square.png", "squareCopy")
+    # d.resizeTotalPercent(50)
+    d.convertType("jpg")
