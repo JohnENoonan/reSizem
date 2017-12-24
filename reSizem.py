@@ -9,6 +9,16 @@ FILE_TYPES = ["ppm", "png", "jpeg", "jpg", "gif", "tiff", "bmp"]
 
 # data holder for image
 class Data:
+    """
+    local fields:
+        im = PIL image representing input
+        origWidth = width of original image
+        origHeight = height of original image
+        path = path to input image
+        name = name of input image
+        extension = file type of image
+
+    """
     def __init__(self, _file, _copyName = ""):
         # try to load image
         try:
@@ -21,19 +31,28 @@ class Data:
             sys.stderr.write(errorMsg)
             sys.exit(1)
         # parse for file path, name, and extension
+        self.parseInput(_file)
+        # store original image dimensions
+        self.origWidth = self.im.width
+        self.origHeight = self.im.height
+        # parse name for copy of image and set flag
+        self.copyName = _copyName
+        self.parseCopyName()
+
+    # helper in constructor to parse file input into substrings
+    def parseInput(self, _file):
         self.path, self.name = os.path.split(_file)
+        # if no path given assume current directory
         if self.path == "":
             self.path = os.getcwd()
         self.name, self.extension = os.path.splitext(self.name);
         self.extension = self.extension.split('.')[1]
-        # store original image dimensions
-        self.origWidth = self.im.width
-        self.origHeight = self.im.height
-        # flag to overwrite image or save to new image
-        self.copyName = _copyName
-        self.copyName = os.path.basename(self.copyName)
-        self.copyName = os.path.splitext(self.copyName)[0]
+
+    def parseCopyName(self):
         self.saveCopy = len(self.copyName) > 0
+        if (self.saveCopy):
+            self.copyName = os.path.basename(self.copyName)
+            self.copyName = os.path.splitext(self.copyName)[0]
 
     # resizes with fixed dimensions
     # requires x,y be integers
@@ -112,7 +131,7 @@ class Data:
             copy = copy.resize((x,y))
             try:
                 print self.path + '/' + self.copyName, self.extension
-                copy.save(self.path + '/' + self.copyName, self.extension)
+                copy.save(self.path + '/' + self.copyName + "." +  self.extension)
             except IOError as e:
                 saveError(e)
         else:
@@ -130,29 +149,9 @@ def saveError(e):
     sys.exit(1)
 
 
-# def getInput(argv):
-#     inputfile = ''
-#     outputfile = ''
-#     try:
-#         opts, args = getopt.getopt(argv,"hi:o:",["ifile=","ofile="])
-#     except getopt.GetoptError:
-#         print 'test.py -i <inputfile> -o <outputfile>'
-#         sys.exit(2)
-#     for opt, arg in opts:
-#         if opt == '-h' or opt == "-help":
-#             print 'test.py -i <inputfile> -o <outputfile>'
-#             sys.exit()
-#         elif opt in ("-i", "--ifile"):
-#             inputfile = arg
-#         elif opt in ("-o", "--ofile"):
-#             outputfile = arg
-#         else:
-#             print "else"
-#     print 'Input file is "', inputfile
-#     print 'Output file is "', outputfile
-
 if __name__ == "__main__":
     # getInput(sys.argv[1:])
     d = Data("./images/square.png", "squareCopy")
-    # d.resizeTotalPercent(50)
-    d.convertType("jpg")
+    # d = Data("C:\\Users\\noonaj2\\Pictures\\artistScreenshot.png", "artistSmaller")
+    d.resizeWidth(602)
+    # d.convertType("jpg")
