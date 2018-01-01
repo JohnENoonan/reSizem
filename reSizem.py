@@ -17,10 +17,23 @@ class Data:
         path = path to input image
         name = name of input image
         extension = file type of image
-
+        saveCopy = boolean flag, true if a resizing will save a copy
+        copyName = string name to be used for saving a new image
     """
     def __init__(self, _file, _copyName = ""):
         # try to load image
+        self.loadImage(_file)
+        # parse for file path, name, and extension
+        self.parseInput(_file)
+        # store original image dimensions
+        self.origWidth = self.im.width
+        self.origHeight = self.im.height
+        # parse name for copy of image and set flag
+        self.copyName = _copyName
+        self.parseCopyName()
+
+    # helper to load image as PIL.Image in constructor
+    def loadImage(self, _file):
         try:
             self.im = Image.open(_file)
         except IOError as e:
@@ -30,14 +43,6 @@ class Data:
             sys.stderr.write(str(e))
             sys.stderr.write(errorMsg)
             sys.exit(1)
-        # parse for file path, name, and extension
-        self.parseInput(_file)
-        # store original image dimensions
-        self.origWidth = self.im.width
-        self.origHeight = self.im.height
-        # parse name for copy of image and set flag
-        self.copyName = _copyName
-        self.parseCopyName()
 
     # helper in constructor to parse file input into substrings
     def parseInput(self, _file):
@@ -48,6 +53,7 @@ class Data:
         self.name, self.extension = os.path.splitext(self.name);
         self.extension = self.extension.split('.')[1]
 
+    # helper to parse the copy name and set whether to save a copy
     def parseCopyName(self):
         self.saveCopy = len(self.copyName) > 0
         if (self.saveCopy):
@@ -59,7 +65,7 @@ class Data:
     def resizeFixed(self, x, y):
         self.saveImage(x,y)
 
-    # resizes based on fixed width wit height maintaing aspect ratio
+    # resizes based on fixed width with height maintaing aspect ratio
     # requires w be an integer
     def resizeWidth(self, w):
         percent = float(w) / float(self.origWidth)
@@ -72,6 +78,15 @@ class Data:
         percent = float(h) / float(self.origHeight)
         newWidth = self.origWidth * percent
         self.saveImage(int(newWidth), h)
+
+    # resizes with maintained aspect ratio making it as large as possible but
+    # <= (targetW, targetH)
+    # requires targetW, targertH be integers
+    def resizeToFit(self, targetW, targertH):
+        scaleW = float(targetW) / float(self.origWidth)
+        scaleHt = float(targetH) / float(self.origHeight)
+        scale = min(scaleW, scaleH)
+        self.saveImage(int(self.origWidth*scale), int(self.origHeight*scale))
 
     # resizes both dimensions by percent.
     # require percent be a real number > 1
@@ -87,11 +102,7 @@ class Data:
             copy.save(self.path + '/' + self.name + "." + _type)
             print "Converted {} from {} to {}".format(self.name, self.extension, _type)
         except IOError as e:
-            sys.stderr.write(str(e))
-            sys.stderr.write("\n\nSomething went wrong when writing new image.",
-                    "Either no new image was created or the new image may",
-                    "be corrupted")
-            sys.exit(1)
+            saveError(e)
 
 
     # compresses image as much as can be with quality of 90
@@ -130,13 +141,16 @@ class Data:
             copy = self.im.copy()
             copy = copy.resize((x,y))
             try:
-                print self.path + '/' + self.copyName, self.extension
+                print "Saved new image {} of size {}x{}".format( \
+                                self.copyName + '.' + self.extension, x, y)
                 copy.save(self.path + '/' + self.copyName + "." +  self.extension)
             except IOError as e:
                 saveError(e)
         else:
             self.im = self.im.resize((x,y))
             try:
+                print "Overwrote {} with size {}x{}".format( \
+                                        self.name + '.' + self.extension, x, y)
                 self.im.save(self.path + '/' + self.name + "." + self.extension)
             except IOError as e:
                 saveError(e)
