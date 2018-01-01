@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, getopt
+import sys, argparse
 import os.path
 from PIL import Image
 
@@ -82,9 +82,9 @@ class Data:
     # resizes with maintained aspect ratio making it as large as possible but
     # <= (targetW, targetH)
     # requires targetW, targertH be integers
-    def resizeToFit(self, targetW, targertH):
+    def resizeToFit(self, targetW, targetH):
         scaleW = float(targetW) / float(self.origWidth)
-        scaleHt = float(targetH) / float(self.origHeight)
+        scaleH = float(targetH) / float(self.origHeight)
         scale = min(scaleW, scaleH)
         self.saveImage(int(self.origWidth*scale), int(self.origHeight*scale))
 
@@ -155,6 +155,7 @@ class Data:
             except IOError as e:
                 saveError(e)
 
+# error output for when an image is improperly saved
 def saveError(e):
     sys.stderr.write(str(e))
     sys.stderr.write("\n\nSomething went wrong when writing new image.",
@@ -162,10 +163,65 @@ def saveError(e):
             "be corrupted")
     sys.exit(1)
 
+class PercentAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        print '%r %r %r' % (namespace, values, option_string)
+        setattr(namespace, self.dest, values)
+
+
+# add options to command line
+def addopts(parser):
+    parser.add_argument('inImg', metavar="'Input Image'",
+        help="Input image to be resized")
+    parser.add_argument('--outImg', '-o', metavar="'Output Image'",
+        help="Output image if not overwriting", default="")
+
+    # add commands
+    commands = parser.add_mutually_exclusive_group(required=True)
+    # resize by percent
+    commands.add_argument('--percent', '-p',  metavar="percent",
+        help="Resize image by percent", type=float)
+    # resize with width
+    commands.add_argument('--resizeWidth', '-rw', metavar="width",
+        help="Resize image to maintain ratio with width set to argument", type=int)
+    # resize with height
+    commands.add_argument('--resizeHeight', '-rh', metavar="height",
+        help="Resize image to maintain ratio with height set to argument", type=int)
+    # resize with fixed dimensions
+    commands.add_argument('--resizeAbsolute', '-ra', metavar=("width", "height"),
+        help="Resize image with given width and height", nargs=2, type=int)
+    # resize to fit dimensions
+    commands.add_argument('--resizeToFit', '-rf', metavar=("'target width'",
+        "'target height'"),
+        help="Resize image to maintain aspect ratio while <= given target dimension",
+        nargs=2, type=int)
+    commands.add_argument('--convertFile', '-c', metavar="extension",
+        help="Convert image to type given")
+
+def runCommand(args):
+    for key in sys.argv[1:]:
+        if key == "-p":
+            d.resizeByPercent(args.percent)
+            break
+        elif key == "-rw":
+            d.resizeWidth(args.resizeWidth)
+            break
+        elif key == "-rh":
+            d.resizeHeight(args.resizeHeight)
+            break
+        elif key == "-ra":
+            d.resizeWidth(args.resizeAbsolute[0], args.resizeAbsolute[1])
+            break
+        elif key == "-rf":
+            d.resizeToFit(args.resizeToFit[0], args.resizeToFit[1])
+            break
+        elif key =='-c':
+            d.convertType(args.convertFile)
+            break
 
 if __name__ == "__main__":
-    # getInput(sys.argv[1:])
-    d = Data("./images/square.png", "squareCopy")
-    # d = Data("C:\\Users\\noonaj2\\Pictures\\artistScreenshot.png", "artistSmaller")
-    d.resizeWidth(602)
-    # d.convertType("jpg")
+    parser = argparse.ArgumentParser(description='Resize and convert images')
+    addopts(parser)
+    args = parser.parse_args()
+    d = Data(args.inImg, args.outImg)
+    runCommand(args)
