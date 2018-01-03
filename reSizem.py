@@ -219,9 +219,28 @@ def runCommand(args):
             d.convertType(args.convertFile)
             break
 
+# output message for usage
+def usageMsg(name=None):
+    return "reSizem.py 'Input image' [options]\n\n"
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Resize and convert images')
+    parser = argparse.ArgumentParser(description='Resize and convert images',
+             usage=usageMsg())
     addopts(parser)
     args = parser.parse_args()
+    # if no output image is entered then input will be overwritten
+    # check to make sure that is ok
+    if args.outImg == "":
+        print "No output image specified. Do you wish to permanently overwrite" +\
+              " {}?".format(args.inImg)
+        while True:
+            ans = raw_input("y/n: ")
+            # if yes continue normally
+            if ans.lower() == "y":
+                break
+            # if no end program
+            elif ans.lower() == "n":
+                print "Aborted"
+                sys.exit(0)
     d = Data(args.inImg, args.outImg)
     runCommand(args)
