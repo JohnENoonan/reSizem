@@ -7,5 +7,5 @@ This is a simple script I created to simplify the annoying task of having to res
 ## To Do
 * More extensive testing
 * Fully implement resizing to decrease file size
-* Improve error handeling and input suggestions 
+* Improve error handling and input suggestions 
 
